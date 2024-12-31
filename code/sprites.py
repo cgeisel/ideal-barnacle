@@ -19,12 +19,12 @@ class Gun(pygame.sprite.Sprite):
     def __init__(self, player, groups):
         # player connection
         self.player = player
-        self.distance = 140
+        self.distance = 100
         self.player_direction = pygame.Vector2(0,1)
 
         # sprite
         super().__init__(groups)
-        self.gun_surf = pygame.image.load(join('images', 'gun', 'gun.png')).convert_alpha()
+        self.gun_surf = pygame.image.load(join('images', 'gun', 'club.png')).convert_alpha()
         self.image = self.gun_surf
         self.rect = self.image.get_frect(center = self.player.rect.center + self.player_direction * self.distance)
     
@@ -48,7 +48,7 @@ class Gun(pygame.sprite.Sprite):
 
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, surf, pos, direction, groups):
+    def __init__(self, surf, pos, direction, groups, enemy_sprites, impact_sound):
         super().__init__(groups)
         self.image = surf
         self.rect = self.image.get_frect(center = pos)
@@ -58,8 +58,20 @@ class Bullet(pygame.sprite.Sprite):
         self.direction = direction
         self.speed = 1200
 
+        self.enemy_sprites = enemy_sprites
+        self.impact_sound = impact_sound
+
+    def collision(self):
+        for sprite in self.enemy_sprites:
+            if sprite.rect.colliderect(self.rect):
+                self.impact_sound.play()
+                self.kill()
+                sprite.destroy()
+
+
     def update(self, dt):
         self.rect.center += self.direction * self.speed * dt
+        self.collision()
         if pygame.time.get_ticks() - self.spawn_time >= self.lifetime:
             self.kill()
 
@@ -79,6 +91,10 @@ class Enemy(pygame.sprite.Sprite):
         self.collision_sprites = collision_sprites
         self.direction = pygame.Vector2()
         self.speed = 350
+
+        # timer
+        self.death_time = 0
+        self.death_duration = 400
 
     def animate(self, dt):
         self.frame_index += self.animation_speed * dt
@@ -107,7 +123,21 @@ class Enemy(pygame.sprite.Sprite):
                     if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom
                     if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
         
+    def destroy(self):
+        # timer
+        self.death_time = pygame.time.get_ticks()
+        # change image
+        surf = pygame.mask.from_surface(self.frames[0]).to_surface()
+        surf.set_colorkey('black')
+        self.image = surf
 
+    def death_timer(self):
+        if pygame.time.get_ticks() - self.death_time >= self.death_duration:
+            self.kill()
+    
     def update(self, dt):
-        self.move(dt)
-        self.animate(dt)
+        if self.death_time == 0:
+            self.move(dt)
+            self.animate(dt)
+        else:
+            self.death_timer()

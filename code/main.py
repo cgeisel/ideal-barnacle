@@ -31,6 +31,14 @@ class Game:
         pygame.time.set_timer(self.enemy_event, 300)
         self.spawn_positions = []
 
+        # audio
+        self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
+        self.shoot_sound.set_volume(0.4)
+        self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
+        # self.music = pygame.mixer.Sound(join('audio', 'music.wav'))
+        # self.music.set_volume(0.4)
+        # self.music.play(loops= -1)
+
         # setup
         self.load_images()
         self.setup()
@@ -52,8 +60,9 @@ class Game:
 
     def input(self):
         if pygame.mouse.get_pressed()[0] and self.can_shoot:
+            self.shoot_sound.play()
             pos = self.gun.rect.center + self.gun.player_direction * 50
-            Bullet(self.bullet_surf, pos, self.gun.player_direction, (self.all_sprites, self.bullet_sprites))
+            Bullet(self.bullet_surf, pos, self.gun.player_direction, (self.all_sprites, self.bullet_sprites), self.enemy_sprites, self.impact_sound)
             self.can_shoot = False
             self.shoot_time = pygame.time.get_ticks()
 
@@ -63,6 +72,10 @@ class Game:
             if current_time - self.shoot_time >= self.gun_cooldown:
                 self.can_shoot = True
 
+    def player_collision(self):
+        if pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask):
+            self.running = False
+        
     def setup(self):
         map = load_pygame(join('data', 'maps', 'world.tmx'))
 
@@ -92,13 +105,14 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     self.running = False
-                if event.type == self.enemy_event:
-                    Enemy(choice(self.spawn_positions), choice(list(self.enemy_frames.values())), (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites)
+                # if event.type == self.enemy_event:
+                #     Enemy(choice(self.spawn_positions), choice(list(self.enemy_frames.values())), (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites)
 
             # update
             self.gun_timer()
             self.input()
             self.all_sprites.update(dt)
+            # self.player_collision()
 
             # draw
             self.display_surface.fill('black')
